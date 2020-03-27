@@ -18,7 +18,7 @@ enum Message {
 // 异构枚举，这种情况容易引起混淆，所以不建议使用
 enum Answer {
   N, // 0
-  Y = 'Yes',
+  Y = 'Yes'
 }
 
 // 枚举成员，枚举成员的值是只读类型，定义了之后是不可以修改的
@@ -76,6 +76,7 @@ function initByRole(role: Role) {
   }
 }
 
+// 对象类型接口
 interface List {
   readonly id: number; // 只读属性，属性值不能被修改
   name: string;
