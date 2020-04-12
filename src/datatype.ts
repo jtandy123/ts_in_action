@@ -3,6 +3,10 @@ let bool: boolean = true
 let num: number | undefined | null = 123 // 联合类型，语法为在两种类型之间加竖线：|
 let str: string = 'abc'
 
+let tempStr: string = `template string
+  test`;
+console.log(tempStr);
+
 // 数组
 let arr1: number[] = [1, 2, 3]
 let arr2: Array<number | string> = [1, 2, 3, '4'] // Array<T>是TS预定义的泛型接口
@@ -20,10 +24,18 @@ let compute: (x: number, y: number) => number // 定义函数类型，没有具�
 compute = (a, b) => a + b // 具体实现，函数的参数名称可以和定义时的不同，也不必指定类型
 
 // 对象
-let obj: object = {x: 1, y: 2}
+let obj: object = {x: 1, y: 2, foo: () => console.log('foo')}
 // obj.x = 3 // 报错
 let obj2: {x: number, y: number} = {x: 3, y: 4}
 obj2.x = 5
+// obj.foo()
+
+let obj3: Object = {x: 5, y: 6};
+obj3 = {z: 7};
+let obj4: object = {x: 8, y: 9};
+// obj3 = obj4;
+console.log('obj3: ', obj3);
+console.log('obj4: ', obj4);
 
 // symbol
 let s1: symbol = Symbol()
@@ -54,3 +66,9 @@ let error = () => {
 let endless = () => {
   while(true) {}
 }
+
+let [first, second]: [string, string] = ['1', '2'];
+
+let defaults = { food: "spicy", price: "$$", ambiance: "noisy" };
+let search = { food: "rich", ...defaults };
+console.log(search);

@@ -142,3 +142,9 @@ interface Names2 {
   [x: string]: any;
   [z: number]: number;
 }
+
+console.log('------');
+
+enum Color {Red, Green, Blue}
+let colorName: string = Color[2];
+console.log(colorName);
