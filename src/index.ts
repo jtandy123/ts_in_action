@@ -1,7 +1,7 @@
 // import './datatype'
 // import './enum'
-// import './function'
-import './interface';
+import './function'
+// import './interface';
 // import './class'
 // import './class-interface'
 // import './greeter';

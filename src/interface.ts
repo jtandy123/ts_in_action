@@ -105,7 +105,7 @@ mySearch = function (src, sub) {
 
 // indexable types
 interface StringArray {
-  [index: number]: string;
+  // [index: number]: string;
   [index2: string]: any;
 }
 
