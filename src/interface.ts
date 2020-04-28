@@ -30,7 +30,7 @@ lib1();
 lib1.doSomething();
 let lib2 = getLib();
 
-console.log('------');
+console.log('--------------------------------------');
 
 function printLabel(labelObj: { label: string }) {
   console.log(labelObj.label);
@@ -70,10 +70,17 @@ function createSquare(config: SquareConfig): { color: string; area: number } {
 let param = { colour: 'red', width: 100 };
 createSquare(param);
 // excess property checks
+/*
+绕开对象字面量的额外属性检查：
+- 使用类型断言
+- 字符串索引签名
+- 将对象字面量赋值给一个变量，变量不会经过额外属性检查
+*/
 createSquare({
-  // colour: 'blue',
-  width: 120
-})
+  colour: 'blue',
+  width: 120,
+  color: 'red'
+} as SquareConfig)
 
 // readonly properties
 interface Point {
@@ -204,6 +211,11 @@ c.interval = 5.0;
 // interfaces extending classes
 class Control {
   private state: any;
+  method() {
+    const button: Button = new Button();
+    button.state = 'test';
+    console.log(button);
+  }
 }
 
 interface SelectableControl extends Control {
@@ -212,7 +224,13 @@ interface SelectableControl extends Control {
 
 class Button extends Control implements SelectableControl {
   select() {
-    console.log('select control');
+    console.log('button select control');
+  }
+}
+
+class TextBox extends Control {
+  select() {
+    console.log('text box select control');
   }
 }
 

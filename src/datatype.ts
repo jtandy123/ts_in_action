@@ -37,6 +37,9 @@ let obj4: object = {x: 8, y: 9};
 console.log('obj3: ', obj3);
 console.log('obj4: ', obj4);
 
+declare function create(o: object | null): void;
+create({ prop: 0 });
+
 // symbol
 let s1: symbol = Symbol()
 let s2 = Symbol()
