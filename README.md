@@ -60,3 +60,7 @@ class TextBox extends Control {
 }
 ```
 在Control类内部，是允许通过SelectableControl的实例来访问私有成员state的。 实际上， SelectableControl接口和拥有select方法的Control类是一样的。Button和TextBox类是SelectableControl的子类（因为它们都继承自Control并有select方法）
+
+## Classes
+- Inheritance
+- Public, private, and protected modifiers
