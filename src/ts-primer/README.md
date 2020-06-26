@@ -45,7 +45,7 @@ TypeScript 中，使用 : 指定变量的类型，: 的前后有没有空格都�
 TypeScript 只会进行静态检查，如果发现有错误，编译的时候就会报错。  
 TypeScript 编译的时候即使报错了，还是会生成编译结果，我们仍然可以使用这个编译之后的文件。如果要在报错的时候终止 js 文件的生成，可以在 tsconfig.json 中配置 noEmitOnError 即可。  
 
-tsconfig.json:
+tsconfig.json(http://json.schemastore.org/tsconfig):
 ```
 {
   files: array,
@@ -681,7 +681,7 @@ let settings: jQuery.AjaxSettings = {
 jQuery.ajax('/api/post_something', settings);
 ```
 
-#### npm包
+##### npm包
 一般来说，npm 包的声明文件可能存在于两个地方：
 - 与该 npm 包绑定在一起。判断依据是 package.json 中有 types 字段，或者有一个 index.d.ts 声明文件。这种模式不需要额外安装其他包，是最为推荐的，所以以后我们自己创建 npm 包的时候，最好也将声明文件与 npm 包绑定在一起。
 - 发布到 @types 里。只需要尝试安装一下对应的 @types 包就知道是否存在该声明文件，安装命令是 npm install @types/foo --save-dev。这种模式一般是由于 npm 包的维护者没有提供声明文件，所以只能由其他人将声明文件发布到 @types 里了。
@@ -868,143 +868,401 @@ declare namespace foo {
 
 export = 不仅可以用在声明文件中，也可以用在普通的 ts 文件中。实际上，import ... require 和 export = 都是 ts 为了兼容 AMD 规范和 commonjs 规范而创立的新语法
 
-#### UMD库
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+##### UMD库
+
+既可以通过 &lt;script&gt; 标签引入，又可以通过 import 导入的库，称为 UMD 库。相比于 npm 包的类型声明文件，我们需要额外声明一个全局变量，为了实现这种方式，ts 提供了一个新语法 export as namespace。一般使用 export as namespace 时，都是先有了 npm 包的声明文件，再基于它添加一条 export as namespace 语句，即可将声明好的一个变量声明为全局变量
+```
+// types/foo/index.d.ts
+export as namespace foo;
+export = foo; // export default foo;
+
+declare function foo(): string;
+declare namespace foo {
+    const bar: number;
+}
+```
+
+##### 直接扩展全局变量
+有的第三方库扩展了一个全局变量，可是此全局变量的类型却没有相应的更新过来，就会导致 ts 编译错误，此时就需要扩展全局变量的类型。  
+比如扩展 String 类型，通过声明合并，使用 interface String 即可给 String 添加属性或方法。
+```
+interface String {
+    prependHello(): string;
+}
+
+'foo'.prependHello();
+```
+也可以使用 declare namespace 给已有的命名空间添加类型声明:
+```
+// types/jquery-plugin/index.d.ts
+declare namespace JQuery {
+    interface CustomOptions {
+        bar: string;
+    }
+}
+
+interface JQueryStatic {
+    foo(options: JQuery.CustomOptions): string;
+}
+
+// src/index.ts
+jQuery.foo({
+    bar: ''
+});
+```
+
+##### 在 npm 包或 UMD 库中扩展全局变量
+对于一个 npm 包或者 UMD 库的声明文件，只有 export 导出的类型声明才能被导入。所以对于 npm 包或 UMD 库，如果导入此库之后会扩展全局变量，则需要使用另一种语法在声明文件中扩展全局变量的类型，那就是 declare global。使用 declare global 可以在 npm 包或者 UMD 库的声明文件中扩展全局变量的类型。
+```
+// types/foo/index.d.ts
+declare global {
+    interface String {
+        prependHello(): string;
+    }
+}
+
+export {};
+
+// src/index.ts
+'bar'.prependHello();
+```
+注意即使此声明文件不需要导出任何东西，仍然需要导出一个空对象，用来告诉编译器这是一个模块的声明文件，而不是一个全局变量的声明文件。
+
+##### 模块插件
+ts 提供了一个语法 declare module，它可以用来扩展原有模块的类型。如果是需要扩展原有模块的话，需要在类型声明文件中先引用原有模块，再使用 declare module 扩展原有模块。
+```
+// types/moment-plugin/index.d.ts
+import * as moment from 'moment';
+
+declare module 'moment' {
+    export function foo(): moment.CalendarKey;
+}
+
+// src/index.ts
+import * as moment from 'moment';
+import 'moment-plugin';
+
+moment.foo();
+```
+declare module 也可用于在一个文件中一次性声明多个模块的类型：
+```
+// types/foo-bar.d.ts
+declare module 'foo' {
+    export interface Foo {
+        foo: string;
+    }
+}
+
+declare module 'bar' {
+    export function bar(): string;
+}
+
+// src/index.ts
+import { Foo } from 'foo';
+import * as bar from 'bar';
+
+let f: Foo;
+bar.bar();
+```
+
+##### 声明文件中的依赖
+除了可以在声明文件中通过 import 导入另一个声明文件中的类型之外，还有一个语法也可以用来导入另一个声明文件，那就是三斜线指令。类似于声明文件中的 import，它可以用来导入另一个声明文件。与 import 的区别是，当且仅当在以下几个场景下，我们才需要使用三斜线指令替代 import：
+- 当我们在书写一个全局变量的声明文件时：当我们在书写一个全局变量的声明文件时，如果需要引用另一个库的类型，那么就必须用三斜线指令了
+- 当我们需要依赖一个全局变量的声明文件时：当我们需要依赖一个全局变量的声明文件时，由于全局变量不支持通过 import 导入，当然也就必须使用三斜线指令来引入了
+```
+// types/jquery-plugin/index.d.ts
+/// <reference types="jquery" />
+
+declare function foo(options: JQuery.AjaxSettings): string;
+
+// src/index.ts
+foo({});
+```
+注意，三斜线指令必须放在文件的最顶端，三斜线指令的前面只允许出现单行或多行注释。
+```
+// types/node-plugin/index.d.ts
+/// <reference types="node" />
+
+export function foo(p: NodeJS.Process): string;
+```
+以上两种使用场景下，都是由于需要书写或需要依赖全局变量的声明文件，所以必须使用三斜线指令。在其他的一些不是必要使用三斜线指令的情况下，就都需要使用 import 来导入。  
+
+##### 拆分声明文件
+当全局变量的声明文件太大时，可以通过拆分为多个文件，然后在一个入口文件中将它们一一引入，来提高代码的可维护性。比如 jQuery 的声明文件就是这样的：
+```
+// node_modules/@types/jquery/index.d.ts
+
+/// <reference types="sizzle" />
+/// <reference path="JQueryStatic.d.ts" />
+/// <reference path="JQuery.d.ts" />
+/// <reference path="misc.d.ts" />
+/// <reference path="legacy.d.ts" />
+
+export = jQuery;
+```
+其中用到了 types 和 path 两种不同的指令。它们的区别是：types 用于声明对另一个库的依赖，而 path 用于声明对另一个文件的依赖。
+
+##### 自动生成声明文件
+如果库的源码本身就是由 ts 写的，那么在使用 tsc 脚本将 ts 编译为 js 的时候，添加 declaration 选项，就可以同时也生成 .d.ts 声明文件了。可以在命令行中添加 --declaration（简写 -d），或者在 tsconfig.json 中添加 declaration 选项。这里以 tsconfig.json 为例：
+```
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "outDir": "lib",
+        "declaration": true,
+    }
+}
+```
+运行 tsc 之后，目录结构如下:
+```
+/path/to/project
+├── lib
+|  ├── bar
+|  |  ├── index.d.ts
+|  |  └── index.js
+|  ├── index.d.ts
+|  └── index.js
+├── src
+|  ├── bar
+|  |  └── index.ts
+|  └── index.ts
+├── package.json
+└── tsconfig.json
+```
+自动生成的声明文件基本保持了源码的结构，而将具体实现去掉了，生成了对应的类型声明。  
+除了 declaration 选项之外，还有几个选项也与自动生成声明文件有关:
+- declarationDir 设置生成 .d.ts 文件的目录
+- declarationMap 对每个 .d.ts 文件，都生成对应的 .d.ts.map（sourcemap）文件
+- emitDeclarationOnly 仅生成 .d.ts 文件，不生成 .js 文件
+
+#### 发布声明文件
+- 将声明文件和源码放在一起
+- 将声明文件发布到 @types 下
+
+##### 将声明文件和源码放在一起
+如果声明文件是通过 tsc 自动生成的，那么无需做任何其他配置，只需要把编译好的文件也发布到 npm 上，使用方就可以获取到类型提示了。
+
+如果是手动写的声明文件，那么需要满足以下条件之一，才能被正确的识别：
+- 给 package.json 中的 types 或 typings 字段指定一个类型声明文件地址
+- 在项目根目录下，编写一个 index.d.ts 文件
+- 针对入口文件（package.json 中的 main 字段指定的入口文件），编写一个同名不同后缀的 .d.ts 文件
+
+先识别 package.json 中是否存在 types 或 typings 字段。发现不存在，那么就会寻找是否存在 index.d.ts 文件。如果还是不存在，那么就会寻找是否存在 lib/index.d.ts 文件。假如说连 lib/index.d.ts 都不存在的话，就会被认为是一个没有提供类型声明文件的库
+
+有的库为了支持导入子模块，比如 import bar from 'foo/lib/bar'，就需要额外再编写一个类型声明文件 lib/bar.d.ts 或者 lib/bar/index.d.ts，这与自动生成声明文件类似，一个库中同时包含了多个类型声明文件。
+
+##### 将声明文件发布到 @types 下
+与普通的 npm 模块不同，@types 是统一由 DefinitelyTyped 管理的。要将声明文件发布到 @types 下，就需要给 DefinitelyTyped 创建一个 pull-request，其中包含了类型声明文件，测试代码，以及 tsconfig.json 等。
+
+pull-request 需要符合它们的规范，并且通过测试，才能被合并，稍后就会被自动发布到 @types 下。
+https://github.com/DefinitelyTyped/DefinitelyTyped#create-a-new-package  
+
+### 内置对象
+- ECMAScript的内置对象：Boolean、Error、Date、RegExp 等。
+- DOM和BOM的内置对象：Document、HTMLElement、Event、NodeList 等。
+- TypeScript核心库的定义文件：https://github.com/Microsoft/TypeScript/tree/master/src/lib
+- 用TypeScript写Node.js
+Node.js 不是内置对象的一部分，如果想用 TypeScript 写 Node.js，则需要引入第三方声明文件：
+```
+$ npm install @types/node --save-dev
+```
+
+### 类型别名
+类型别名用来给一个类型起个新名字。类型别名常用于联合类型。
+```
+type Name = string;
+type NameResolver = () => string;
+type NameOrResolver = Name | NameResolver;
+function getName(n: NameOrResolver): Name {
+    if (typeof n === 'string') {
+        return n;
+    } else {
+        return n();
+    }
+}
+```
+
+### 字符串字面量类型
+字符串字面量类型用来约束取值只能是某几个字符串中的一个。
+```
+type EventNames = 'click' | 'scroll' | 'mousemove';
+function handleEvent(ele: Element, event: EventNames) {
+    // do something
+}
+
+handleEvent(document.getElementById('hello'), 'scroll');  // 没问题
+handleEvent(document.getElementById('world'), 'dblclick'); // 报错，event 不能为 'dblclick'
+```
+
+### 元组
+数组合并了相同类型的对象，而元组（Tuple）合并了不同类型的对象。  
+当直接对元组类型的变量进行初始化或者赋值的时候，需要提供所有元组类型中指定的项。
+```
+let tom: [string, number];
+tom[0] = 'Tom';
+tom[1] = 25;
+
+tom[0].slice(1);
+tom[1].toFixed(2);
+
+let tom: [string, number];
+tom[0] = 'Tom';
+
+let tom: [string, number];
+tom = ['Tom', 25];
+```
+当添加越界的元素时，它的类型会被限制为元组中每个类型的联合类型。
+```
+let tom: [string, number];
+tom = ['Tom', 25];
+tom.push('male');
+tom.push(true);
+
+// Argument of type 'true' is not assignable to parameter of type 'string | number'.
+```
+
+### 枚举
+枚举（Enum）类型用于取值被限定在一定范围内的场景，比如一周只能有七天，颜色限定为红绿蓝等。
+```
+enum Days {Sun, Mon, Tue, Wed, Thu, Fri, Sat};
+```
+枚举成员会被赋值为从 0 开始递增的数字，同时也会对枚举值到枚举名进行反向映射：
+```
+enum Days {Sun, Mon, Tue, Wed, Thu, Fri, Sat};
+
+console.log(Days["Sun"] === 0); // true
+console.log(Days["Mon"] === 1); // true
+console.log(Days["Tue"] === 2); // true
+console.log(Days["Sat"] === 6); // true
+
+console.log(Days[0] === "Sun"); // true
+console.log(Days[1] === "Mon"); // true
+console.log(Days[2] === "Tue"); // true
+console.log(Days[6] === "Sat"); // true
+```
+```
+"use strict";
+var Days;
+(function (Days) {
+    Days[Days["Sun"] = 0] = "Sun";
+    Days[Days["Mon"] = 1] = "Mon";
+    Days[Days["Tue"] = 2] = "Tue";
+    Days[Days["Wed"] = 3] = "Wed";
+    Days[Days["Thu"] = 4] = "Thu";
+    Days[Days["Fri"] = 5] = "Fri";
+    Days[Days["Sat"] = 6] = "Sat";
+})(Days || (Days = {}));
+;
+```
+
+#### 手动赋值
+```
+enum Days {Sun = 7, Mon = 1, Tue, Wed, Thu, Fri, Sat};
+
+console.log(Days["Sun"] === 7); // true
+console.log(Days["Mon"] === 1); // true
+console.log(Days["Tue"] === 2); // true
+console.log(Days["Sat"] === 6); // true
+```
+未手动赋值的枚举项会接着上一个枚举项递增。如果未手动赋值的枚举项与手动赋值的重复了，TypeScript 是不会察觉到这一点的：
+```
+enum Days {Sun = 3, Mon = 1, Tue, Wed, Thu, Fri, Sat};
+
+console.log(Days["Sun"] === 3); // true
+console.log(Days["Wed"] === 3); // true
+console.log(Days[3] === "Sun"); // false
+console.log(Days[3] === "Wed"); // true
+```
+手动赋值的枚举项可以不是数字:
+```
+enum Days {Sun = 7, Mon, Tue, Wed, Thu, Fri, Sat = <any>"S"};
+enum Days {Sun = 7, Mon, Tue, Wed, Thu, Fri, Sat = "S"};
+```
+手动赋值的枚举项也可以为小数或负数，此时后续未手动赋值的项的递增步长仍为 1：
+```
+enum Days {Sun = 7, Mon = 1.5, Tue, Wed, Thu, Fri, Sat};
+
+console.log(Days["Sun"] === 7); // true
+console.log(Days["Mon"] === 1.5); // true
+console.log(Days["Tue"] === 2.5); // true
+console.log(Days["Sat"] === 6.5); // true
+```
+
+#### 常数项和计算所得项
+枚举项有两种类型：常数项（constant member）和计算所得项（computed member）。
+```
+enum Color {Red, Green, Blue = "blue".length};
+```
+如果紧接在计算所得项后面的是未手动赋值的项，那么它就会因为无法获得初始值而报错：
+```
+enum Color {Red = "red".length, Green, Blue};
+
+// index.ts(1,33): error TS1061: Enum member must have initializer.
+// index.ts(1,40): error TS1061: Enum member must have initializer.
+```
+
+当满足以下条件时，枚举成员被当作是常数：
+- 不具有初始化函数并且之前的枚举成员是常数。在这种情况下，当前枚举成员的值为上一个枚举成员的值加 1。但第一个枚举元素是个例外。如果它没有初始化方法，那么它的初始值为 0。
+- 枚举成员使用常数枚举表达式初始化。常数枚举表达式是 TypeScript 表达式的子集，它可以在编译阶段求值。当一个表达式满足下面条件之一时，它就是一个常数枚举表达式：
+  - 数字字面量
+  - 引用之前定义的常数枚举成员（可以是在不同的枚举类型中定义的）如果这个成员是在同一个枚举类型中定义的，可以使用非限定名来引用
+  - 带括号的常数枚举表达式
+  - +, -, ~ 一元运算符应用于常数枚举表达式
+  - +, -, *, /, %, <<, >>, >>>, &, |, ^ 二元运算符，常数枚举表达式做为其一个操作对象。若常数枚举表达式求值后为 NaN 或 Infinity，则会在编译阶段报错
+所有其它情况的枚举成员被当作是需要计算得出的值。
+
+#### 常数枚举
+常数枚举是使用 const enum 定义的枚举类型：
+```
+const enum Directions {
+    Up,
+    Down,
+    Left,
+    Right
+}
+
+let directions = [Directions.Up, Directions.Down, Directions.Left, Directions.Right];
+```
+常数枚举与普通枚举的区别是，它会在编译阶段被删除，并且不能包含计算成员。
+```
+// 编译结果
+var directions = [0 /* Up */, 1 /* Down */, 2 /* Left */, 3 /* Right */];
+
+const enum Color {Red, Green, Blue = "blue".length};
+// index.ts(1,38): error TS2474: In 'const' enum declarations member initializer must be constant expression.
+```
+
+#### 外部枚举
+外部枚举（Ambient Enums）是使用 declare enum 定义的枚举类型：
+```
+declare enum Directions {
+    Up,
+    Down,
+    Left,
+    Right
+}
+
+let directions = [Directions.Up, Directions.Down, Directions.Left, Directions.Right];
+```
+declare 定义的类型只会用于编译时的检查，编译结果中会被删除。上例的编译结果是：
+```
+var directions = [Directions.Up, Directions.Down, Directions.Left, Directions.Right];
+```
+外部枚举与声明语句一样，常出现在声明文件中。同时使用 declare 和 const 也是可以的：
+```
+declare const enum Directions {
+    Up,
+    Down,
+    Left,
+    Right
+}
+
+let directions = [Directions.Up, Directions.Down, Directions.Left, Directions.Right];
+```
+编译结果：
+```
+var directions = [0 /* Up */, 1 /* Down */, 2 /* Left */, 3 /* Right */];
+```
 
 
 
